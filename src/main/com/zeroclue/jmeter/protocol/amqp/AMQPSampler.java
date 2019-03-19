@@ -2,8 +2,10 @@ package com.zeroclue.jmeter.protocol.amqp;
 
 import com.rabbitmq.client.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.samplers.AbstractSampler;
 import org.apache.jmeter.testelement.ThreadListener;
+import org.apache.jmeter.testelement.property.TestElementProperty;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
@@ -40,6 +42,7 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
     protected static final String EXCHANGE_DURABLE = "AMQPSampler.ExchangeDurable";
     protected static final String EXCHANGE_AUTO_DELETE = "AMQPSampler.ExchangeAutoDelete";
     protected static final String EXCHANGE_REDECLARE = "AMQPSampler.ExchangeRedeclare";
+    protected static final String EXCHANGE_ARGUMENTS = "AMQPSampler.ExchangeArguments";
     protected static final String QUEUE = "AMQPSampler.Queue";
     protected static final String ROUTING_KEY = "AMQPSampler.RoutingKey";
     protected static final String VIRUTAL_HOST = "AMQPSampler.VirtualHost";
@@ -95,19 +98,19 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
                     deleteExchange();
                 }
 
-                AMQP.Exchange.DeclareOk declareExchangeResp = channel.exchangeDeclare(getExchange(), getExchangeType(), getExchangeDurable(), getExchangeAutoDelete(), Collections.<String, Object>emptyMap());
+                AMQP.Exchange.DeclareOk declareExchangeResp = channel.exchangeDeclare(getExchange(), getExchangeType(), getExchangeDurable(), getExchangeAutoDelete(), prepareExchangeArguments());
                 if (queueConfigured) {
                     channel.queueBind(getQueue(), getExchange(), getRoutingKey());
                 }
             }
 
-        log.info("bound to:"
-                +"\n\t queue: " + getQueue()
-                +"\n\t exchange: " + getExchange()
-                +"\n\t exchange(D)? " + getExchangeDurable()
-                +"\n\t routing key: " + getRoutingKey()
-                +"\n\t arguments: " + getQueueArguments()
-                );
+            log.info("bound to:"
+                    +"\n\t queue: " + getQueue()
+                    +"\n\t exchange: " + getExchange()
+                    +"\n\t exchange(D)? " + getExchangeDurable()
+                    +"\n\t routing key: " + getRoutingKey()
+                    +"\n\t arguments: " + getQueueArguments()
+            );
 
         }
         return true;
@@ -123,6 +126,15 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
             arguments.put("x-expires", getMessageExpiresAsInt());
 
         return arguments;
+    }
+
+    private Map<String, Object> prepareExchangeArguments() {
+        Map<String, Object> result = new HashMap<>();
+        Map<String, String> source = getExchangeArguments().getArgumentsAsMap();
+        for (Map.Entry<String, String> item : source.entrySet()) {
+            result.put(item.getKey(), item.getValue());
+        }
+        return result;
     }
 
     protected abstract Channel getChannel();
@@ -203,6 +215,15 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
 
     public void setExchangeRedeclare(Boolean content) {
         setProperty(EXCHANGE_REDECLARE, content);
+    }
+
+
+    public void setExchangeArguments(Arguments arguments) {
+        setProperty(new TestElementProperty(EXCHANGE_ARGUMENTS, arguments));
+    }
+
+    public Arguments getExchangeArguments() {
+        return (Arguments) getProperty(EXCHANGE_ARGUMENTS).getObjectValue();
     }
 
     public String getQueue() {
@@ -381,7 +402,7 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
     }
 
     public void setQueueRedeclare(Boolean content) {
-       setProperty(QUEUE_REDECLARE, content);
+        setProperty(QUEUE_REDECLARE, content);
     }
 
     protected void cleanup() {
@@ -408,7 +429,7 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
     protected Channel createChannel() throws IOException, NoSuchAlgorithmException, KeyManagementException {
         log.info("Creating channel " + getVirtualHost()+":"+getPortAsInt());
 
-         if (connection == null || !connection.isOpen()) {
+        if (connection == null || !connection.isOpen()) {
             factory.setConnectionTimeout(getTimeoutAsInt());
             factory.setVirtualHost(getVirtualHost());
             factory.setUsername(getUsername());
@@ -418,15 +439,15 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
             }
 
             log.info("RabbitMQ ConnectionFactory using:"
-                  +"\n\t virtual host: " + getVirtualHost()
-                  +"\n\t host: " + getHost()
-                  +"\n\t port: " + getPort()
-                  +"\n\t username: " + getUsername()
-                  +"\n\t password: " + getPassword()
-                  +"\n\t timeout: " + getTimeout()
-                  +"\n\t heartbeat: " + factory.getRequestedHeartbeat()
-                  +"\nin " + this
-                  );
+                    +"\n\t virtual host: " + getVirtualHost()
+                    +"\n\t host: " + getHost()
+                    +"\n\t port: " + getPort()
+                    +"\n\t username: " + getUsername()
+                    +"\n\t password: " + getPassword()
+                    +"\n\t timeout: " + getTimeout()
+                    +"\n\t heartbeat: " + factory.getRequestedHeartbeat()
+                    +"\nin " + this
+            );
 
             String[] hosts = getHost().split(",");
             Address[] addresses = new Address[hosts.length];
@@ -435,12 +456,12 @@ public abstract class AMQPSampler extends AbstractSampler implements ThreadListe
             }
             log.info("Using hosts: " + Arrays.toString(hosts) + " addresses: " + Arrays.toString(addresses));
             connection = factory.newConnection(addresses);
-         }
+        }
 
-         Channel channel = connection.createChannel();
-         if(!channel.isOpen()){
-             log.fatalError("Failed to open channel: " + channel.getCloseReason().getLocalizedMessage());
-         }
+        Channel channel = connection.createChannel();
+        if(!channel.isOpen()){
+            log.fatalError("Failed to open channel: " + channel.getCloseReason().getLocalizedMessage());
+        }
         return channel;
     }
 

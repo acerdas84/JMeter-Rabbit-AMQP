@@ -1,6 +1,9 @@
 package com.zeroclue.jmeter.protocol.amqp.gui;
 
+import com.zeroclue.jmeter.protocol.amqp.AMQPPublisher;
 import com.zeroclue.jmeter.protocol.amqp.AMQPSampler;
+import org.apache.jmeter.config.Arguments;
+import org.apache.jmeter.config.gui.ArgumentsPanel;
 import org.apache.jmeter.gui.util.VerticalPanel;
 import org.apache.jmeter.samplers.gui.AbstractSamplerGui;
 import org.apache.jmeter.testelement.TestElement;
@@ -32,6 +35,7 @@ public abstract class AMQPSamplerGui extends AbstractSamplerGui {
     private final JCheckBox queueRedeclare = new JCheckBox("Redeclare?", AMQPSampler.DEFAULT_QUEUE_REDECLARE);
     private final JCheckBox queueExclusive = new JCheckBox("Exclusive", true);
     private final JCheckBox queueAutoDelete = new JCheckBox("Auto Delete?", true);
+    private final ArgumentsPanel exchangeArguments = new ArgumentsPanel("Arguments");
 
     protected JLabeledTextField host = new JLabeledTextField("Host");
     protected JLabeledTextField port = new JLabeledTextField("Port");
@@ -60,6 +64,7 @@ public abstract class AMQPSamplerGui extends AbstractSamplerGui {
         exchangeDurable.setSelected(sampler.getExchangeDurable());
         exchangeAutoDelete.setSelected(sampler.getExchangeAutoDelete());
         exchangeRedeclare.setSelected(sampler.getExchangeRedeclare());
+        configureExchangeArguments(sampler);
         queue.setText(sampler.getQueue());
         routingKey.setText(sampler.getRoutingKey());
         virtualHost.setText(sampler.getVirtualHost());
@@ -91,6 +96,7 @@ public abstract class AMQPSamplerGui extends AbstractSamplerGui {
         exchangeDurable.setSelected(AMQPSampler.DEFAULT_EXCHANGE_DURABLE);
         exchangeAutoDelete.setSelected(AMQPSampler.DEFAULT_EXCHANGE_AUTO_DELETE);
         exchangeRedeclare.setSelected(AMQPSampler.DEFAULT_EXCHANGE_REDECLARE);
+        exchangeArguments.clearGui();
         routingKey.setText("jmeterRoutingKey");
         virtualHost.setText("/");
         messageTTL.setText("");
@@ -125,6 +131,7 @@ public abstract class AMQPSamplerGui extends AbstractSamplerGui {
         sampler.setExchangeDurable(exchangeDurable.isSelected());
         sampler.setExchangeAutoDelete(exchangeAutoDelete.isSelected());
         sampler.setExchangeRedeclare(exchangeRedeclare.isSelected());
+        sampler.setExchangeArguments((Arguments) exchangeArguments.createTestElement());
         sampler.setQueue(queue.getText());
         sampler.setRoutingKey(routingKey.getText());
         sampler.setVirtualHost(virtualHost.getText());
@@ -201,6 +208,11 @@ public abstract class AMQPSamplerGui extends AbstractSamplerGui {
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 1;
         exchangeSettings.add(exchangeRedeclare, gridBagConstraints);
+
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        //exchangeArguments.setPreferredSize(new Dimension(300,100));
+        exchangeSettings.add(exchangeArguments, gridBagConstraints);
 
         JPanel queueSettings = new JPanel(new GridBagLayout());
         queueSettings.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Queue"));
@@ -285,6 +297,15 @@ public abstract class AMQPSamplerGui extends AbstractSamplerGui {
         commonPanel.add(serverSettings, gridBagConstraintsCommon);
 
         return commonPanel;
+    }
+
+    private void configureExchangeArguments(AMQPSampler sampler) {
+        Arguments samplerExchangeArguments = sampler.getExchangeArguments();
+        if (samplerExchangeArguments != null) {
+            exchangeArguments.configure(samplerExchangeArguments);
+        } else {
+            exchangeArguments.clearGui();
+        }
     }
 
 }
